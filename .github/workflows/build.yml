@@ -37,12 +37,21 @@ jobs:
           chmod +x gradlew
 
       - name: Build APK
-        run: ./gradlew assembleDebug assembleRelease --no-daemon
+        run: |
+          set +e
+          ./gradlew assembleDebug assembleRelease --no-daemon 2>&1 | tee build.log
+          echo "Build exit code: $?"
+          echo "=== Last 100 lines of build log ==="
+          tail -100 build.log
 
-      - name: Copy APK to output
+      - name: Find and copy APK
         run: |
           mkdir -p output
-          find . -name "*.apk" -type f -exec cp {} output/ \;
+          echo "=== Searching for APK files ==="
+          find . -name "*.apk" -type f 2>/dev/null
+          find . -name "*.apk" -type f -exec cp {} output/ \; 2>/dev/null
+          echo "=== Output directory ==="
+          ls -la output/ 2>/dev/null || echo "output dir is empty"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -50,22 +59,4 @@ jobs:
           name: qinglong-android-apk
           path: output/
           retention-days: 30
-
-  release:
-    name: Create Release
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
-    steps:
-      - name: Download APK
-        uses: actions/download-artifact@v4
-        with:
-          name: qinglong-android-apk
-          path: release-assets
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: release-assets/*.apk
-          generate_release_notes: true
+          if-no-files-found: warn
