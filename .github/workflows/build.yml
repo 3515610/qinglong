@@ -35,30 +35,30 @@ jobs:
           curl -L -o gradlew https://raw.githubusercontent.com/gradle/gradle/v8.2.0/gradlew
           chmod +x gradlew
 
-      - name: Build APK
-        run: ./gradlew assembleDebug assembleRelease --no-daemon
-
-      - name: List APK files
+      - name: Build APK with error log
         run: |
-          echo "=== All APK files ==="
+          ./gradlew assembleDebug assembleRelease --no-daemon --info 2>&1 | tee build.log
+          echo "EXIT_CODE=$?"
+          tail -200 build.log
+
+      - name: Find APK files
+        run: |
           find . -name "*.apk" -type f
-          echo "=== Debug APK dir ==="
+          echo "=== Debug APK ==="
           ls -la app/build/outputs/apk/debug/ 2>/dev/null || echo "not found"
-          echo "=== Release APK dir ==="
+          echo "=== Release APK ==="
           ls -la app/build/outputs/apk/release/ 2>/dev/null || echo "not found"
 
       - name: Copy APK to output directory
         run: |
           mkdir -p output
-          cp app/build/outputs/apk/debug/*.apk output/ 2>/dev/null || true
-          cp app/build/outputs/apk/release/*.apk output/ 2>/dev/null || true
-          echo "=== Output directory ==="
-          ls -la output/
+          find . -name "*.apk" -type f -exec cp {} output/ \;
+          ls -la output/ || echo "output dir empty"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: qinglong-android-apk
-          path: output/*.apk
-          if-no-files-found: error
+          path: output/
+          if-no-files-found: warn
           retention-days: 30

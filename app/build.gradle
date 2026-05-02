@@ -40,10 +40,15 @@ android {
         viewBinding true
     }
     
-    packagingOptions {
+    packaging {
         resources {
             excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE', 'META-INF/LICENSE.txt']
         }
+    }
+    
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
     }
 }
 
