@@ -8,13 +8,10 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build:
     name: Build APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout code
@@ -29,50 +26,36 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install Android SDK components
+        run: |
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: 8.2
 
-      - name: Install Android SDK components
-        run: |
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
-
       - name: Build APK
-        id: build
         run: |
-          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
-          BUILD_EXIT_CODE=${PIPESTATUS[0]}
-          echo "build_exit_code=$BUILD_EXIT_CODE" >> $GITHUB_OUTPUT
-          if [ $BUILD_EXIT_CODE -ne 0 ]; then
-            echo "::error::Gradle build failed with exit code $BUILD_EXIT_CODE"
-            exit $BUILD_EXIT_CODE
-          fi
+          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log || {
+            echo "Build failed with exit code $?"
+            echo "## Build Log" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat build.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
 
-      - name: Print build log on failure
-        if: failure()
-        run: |
-          echo "## Build Log" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat build.log >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "=== FULL BUILD LOG ==="
-          cat build.log
-
-      - name: Find and copy APK
+      - name: Find APK
         run: |
           mkdir -p output
-          echo "=== Searching for APK files ==="
-          find . -name "*.apk" -type f 2>/dev/null
           find . -name "*-debug.apk" -type f -exec cp {} output/ \; 2>/dev/null
-          find . -name "*-release-unsigned.apk" -o -name "*-release.apk" | grep -v "unaligned" | xargs -I {} cp {} output/ 2>/dev/null
-          echo "=== Output directory ==="
-          ls -la output/ 2>/dev/null || echo "output dir is empty"
+          ls -la output/ 2>/dev/null || echo "No APK found"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: qinglong-android-apk
-          path: output/
+          path: output/*.apk
           retention-days: 30
           if-no-files-found: warn
