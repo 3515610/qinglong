@@ -1,8 +1,8 @@
 package com.qinglong.panel.utils
 
 import android.content.Context
-import android.content.Intent
-import com.qinglong.panel.service.QingLongWebServerService
+import android.os.Handler
+import android.os.Looper
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.*
@@ -12,6 +12,7 @@ class LocalServerManager(private val context: Context) {
 
     private var serverScope: CoroutineScope? = null
     private var isRunning = false
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     fun startServer(port: Int, onStart: (Boolean, String) -> Unit) {
         serverScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -21,15 +22,11 @@ class LocalServerManager(private val context: Context) {
                 if (isPortAvailable(port)) {
                     startQingLongServer(port, onStart)
                 } else {
-                    withContext(Dispatchers.Main) {
-                        onStart(false, "端口 $port 已被占用")
-                    }
+                    postToMain(onStart, false, "端口 $port 已被占用")
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Server start failed")
-                withContext(Dispatchers.Main) {
-                    onStart(false, "服务器启动失败：${e.message}")
-                }
+                postToMain(onStart, false, "服务器启动失败：${e.message}")
             }
         }
     }
@@ -38,9 +35,7 @@ class LocalServerManager(private val context: Context) {
         val qinglongDir = File(context.filesDir, "qinglong")
         
         if (!qinglongDir.exists()) {
-            withContext(Dispatchers.Main) {
-                onStart(false, "青龙面板未安装")
-            }
+            postToMain(onStart, false, "青龙面板未安装")
             return
         }
 
@@ -49,7 +44,7 @@ class LocalServerManager(private val context: Context) {
             createStartScript(qinglongDir, port)
         }
 
-        val env = createEnvironment(context)
+        val env = createEnvironment()
         
         val processBuilder = ProcessBuilder(
             "sh", startScript.absolutePath
@@ -61,9 +56,7 @@ class LocalServerManager(private val context: Context) {
         val process = processBuilder.start()
         isRunning = true
 
-        withContext(Dispatchers.Main) {
-            onStart(true, "服务器已启动")
-        }
+        postToMain(onStart, true, "服务器已启动")
 
         process.inputStream.bufferedReader().use { reader ->
             var line: String?
@@ -71,6 +64,10 @@ class LocalServerManager(private val context: Context) {
                 Timber.d("Server: $line")
             }
         }
+    }
+
+    private fun postToMain(callback: (Boolean, String) -> Unit, success: Boolean, message: String) {
+        mainHandler.post { callback(success, message) }
     }
 
     private fun createStartScript(dir: File, port: Int) {
@@ -92,7 +89,7 @@ wait ${'$'}!
         File(dir, "start.sh").setExecutable(true)
     }
 
-    private fun createEnvironment(context: Context): Map<String, String> {
+    private fun createEnvironment(): Map<String, String> {
         return mapOf(
             "PATH" to "${context.filesDir}/nodejs/bin:${System.getenv("PATH")}",
             "NODE_PATH" to "${context.filesDir}/nodejs/lib/node_modules",
