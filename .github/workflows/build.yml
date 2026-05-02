@@ -37,24 +37,25 @@ jobs:
           chmod +x gradlew
 
       - name: Build APK
+        id: build
         run: |
           ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace 2>&1 | tee build.log
           BUILD_EXIT_CODE=${PIPESTATUS[0]}
-          echo "Build exit code: $BUILD_EXIT_CODE"
+          echo "build_exit_code=$BUILD_EXIT_CODE" >> $GITHUB_OUTPUT
           if [ $BUILD_EXIT_CODE -ne 0 ]; then
-            echo "=== Gradle Build Failed ==="
-            echo "=== Full build.log ==="
-            cat build.log
+            echo "::error::Gradle build failed with exit code $BUILD_EXIT_CODE"
             exit $BUILD_EXIT_CODE
           fi
 
-      - name: Upload build log on failure
-        uses: actions/upload-artifact@v4
+      - name: Print build log on failure
         if: failure()
-        with:
-          name: build-log
-          path: build.log
-          retention-days: 30
+        run: |
+          echo "## Build Log" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat build.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "=== FULL BUILD LOG ==="
+          cat build.log
 
       - name: Find and copy APK
         run: |
