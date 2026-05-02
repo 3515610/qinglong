@@ -1,8 +1,6 @@
 package com.qinglong.panel
 
 import android.annotation.SuppressLint
-import android.content.Intent
-import android.graphics.Bitmap
 import android.os.Bundle
 import android.view.View
 import android.webkit.*
@@ -48,7 +46,7 @@ class WebViewActivity : AppCompatActivity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
-            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 binding.progressBar.visibility = View.VISIBLE
             }
@@ -82,16 +80,7 @@ class WebViewActivity : AppCompatActivity() {
                 super.onProgressChanged(view, newProgress)
                 binding.progressBar.progress = newProgress
             }
-
-            override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
-                consoleMessage?.let {
-                    android.util.Log.d("WebView", it.message())
-                }
-                return super.onConsoleMessage(consoleMessage)
-            }
         }
-
-        binding.webView.addJavascriptInterface(WebAppInterface(this), "Android")
     }
 
     private fun loadQingLongPanel() {
@@ -132,17 +121,5 @@ class WebViewActivity : AppCompatActivity() {
         super.onDestroy()
         binding.webView.destroy()
         localServerManager.stopServer()
-    }
-}
-
-class WebAppInterface(private val context: WebViewActivity) {
-    @JavascriptInterface
-    fun openTerminal() {
-        context.startActivity(Intent(context, TerminalActivity::class.java))
-    }
-
-    @JavascriptInterface
-    fun openUpdate() {
-        context.startActivity(Intent(context, UpdateActivity::class.java))
     }
 }

@@ -49,12 +49,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        binding.btnOpenTerminal.setOnClickListener {
-            startActivity(Intent(this, TerminalActivity::class.java))
-        }
-
         binding.btnCheckUpdate.setOnClickListener {
-            startActivity(Intent(this, UpdateActivity::class.java))
+            startActivity(Intent(this, WebViewActivity::class.java))
         }
 
         binding.btnSettings.setOnClickListener {

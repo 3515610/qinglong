@@ -5,7 +5,6 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import androidx.lifecycle.LifecycleService
 import com.qinglong.panel.MainActivity
 import com.qinglong.panel.R
 import com.qinglong.panel.utils.LocalServerManager
@@ -13,13 +12,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
-class QingLongForegroundService : LifecycleService() {
+class QingLongForegroundService : Service() {
 
     private val notificationId = 1001
     private val channelId = "qinglong_service_channel"
-    private lateinit var localServerManager: LocalServerManager
+    private var localServerManager: LocalServerManager? = null
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun onCreate() {
@@ -30,7 +28,6 @@ class QingLongForegroundService : LifecycleService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        super.onStartCommand(intent, flags, startId)
         startQingLongService()
         return START_STICKY
     }
@@ -38,17 +35,14 @@ class QingLongForegroundService : LifecycleService() {
     private fun startQingLongService() {
         serviceScope.launch {
             try {
-                localServerManager.startServer(5700) { success, message ->
+                localServerManager?.startServer(5700) { success, message ->
                     if (success) {
                         updateNotification("青龙面板运行中", "端口: 5700")
-                        Timber.d("QingLong server started successfully")
                     } else {
                         updateNotification("服务启动失败", message)
-                        Timber.e("QingLong server start failed: $message")
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Failed to start QingLong service")
                 updateNotification("服务异常", e.message ?: "未知错误")
             }
         }
@@ -93,14 +87,13 @@ class QingLongForegroundService : LifecycleService() {
     }
 
     override fun onBind(intent: Intent): IBinder? {
-        super.onBind(intent)
         return null
     }
 
     override fun onDestroy() {
         super.onDestroy()
         serviceScope.cancel()
-        localServerManager.stopServer()
+        localServerManager?.stopServer()
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 }

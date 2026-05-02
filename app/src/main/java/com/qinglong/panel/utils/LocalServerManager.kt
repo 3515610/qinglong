@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import kotlinx.coroutines.*
-import timber.log.Timber
 import java.io.*
 import java.net.ServerSocket
 
@@ -25,7 +24,6 @@ class LocalServerManager(private val context: Context) {
                     postToMain(onStart, false, "端口 $port 已被占用")
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Server start failed")
                 postToMain(onStart, false, "服务器启动失败：${e.message}")
             }
         }
@@ -61,7 +59,7 @@ class LocalServerManager(private val context: Context) {
         process.inputStream.bufferedReader().use { reader ->
             var line: String?
             while (reader.readLine().also { line = it } != null && isRunning) {
-                Timber.d("Server: $line")
+                // Read server output
             }
         }
     }
@@ -75,15 +73,15 @@ class LocalServerManager(private val context: Context) {
 #!/bin/bash
 cd "${dir.absolutePath}"
 
-export PATH="${context.filesDir}/nodejs/bin:${'$'}PATH"
+export PATH="${context.filesDir}/nodejs/bin:\$PATH"
 export NODE_PATH="${context.filesDir}/nodejs/lib/node_modules"
 
 echo "Starting QingLong Panel on port $port..."
 
 node main.js --port $port &
-echo ${'$'}! > /tmp/qinglong.pid
+echo \$! > /tmp/qinglong.pid
 
-wait ${'$'}!
+wait \$!
 """
         File(dir, "start.sh").writeText(script)
         File(dir, "start.sh").setExecutable(true)
@@ -117,7 +115,7 @@ wait ${'$'}!
                 Runtime.getRuntime().exec(arrayOf("kill", pid))
             }
         } catch (e: Exception) {
-            Timber.e(e, "Failed to stop server")
+            // Ignore
         }
     }
 }
