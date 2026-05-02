@@ -1,0 +1,10 @@
+{
+    "editor.wrappingIndent": "none",
+    "writerHelper.plugin.lineAsParagraph": true,
+    "writerHelper.plugin.markdownFormatting": true,
+    "writerHelper.enabled": true,
+    "writerHelper.chapterSummary.dirs": [
+        "章节"
+    ],
+    "writerHelper.chapterSummary.outputDir": "章节概述"
+}
