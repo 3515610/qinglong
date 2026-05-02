@@ -16,7 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         UpdateHistoryEntity::class
     ],
     version = 2,
-    exportSchema = true
+    exportSchema = false
 )
 abstract class QingLongDatabase : RoomDatabase() {
 

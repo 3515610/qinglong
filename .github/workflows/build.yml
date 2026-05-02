@@ -7,6 +7,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     name: Build APK
@@ -27,28 +30,31 @@ jobs:
 
       - name: Download Gradle Wrapper
         run: |
-          curl -L -o gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.2.0/gradle/wrapper/gradle-wrapper.jar
           mkdir -p gradle/wrapper
-          mv gradle-wrapper.jar gradle/wrapper/
-          curl -L -o gradlew https://raw.githubusercontent.com/gradle/gradle/v8.2.0/gradlew
+          curl -L -o gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/v8.2.0/gradle/wrapper/gradle-wrapper.jar
+          curl -L -o gradlew https://github.com/gradle/gradle/raw/v8.2.0/gradlew
           chmod +x gradlew
 
+      - name: Generate Debug Keystore
+        run: |
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tail -200
+        run: ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tail -300
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: warn
+          if-no-files-found: error
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tail -200
+        run: ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tail -300
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release
           path: app/build/outputs/apk/release/app-release-unsigned.apk
-          if-no-files-found: warn
+          if-no-files-found: error
