@@ -42,6 +42,15 @@ class QingLongUpdater(private val context: Context) {
         }.start()
     }
 
+    fun checkForUpdatesSync(): List<UpdateInfo> {
+        return try {
+            checkQingLongUpdate()
+        } catch (e: Exception) {
+            Timber.e(e, "Update check failed")
+            emptyList()
+        }
+    }
+
     private fun checkQingLongUpdate(): List<UpdateInfo> {
         val updates = mutableListOf<UpdateInfo>()
 

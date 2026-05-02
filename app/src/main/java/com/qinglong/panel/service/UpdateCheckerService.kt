@@ -6,6 +6,7 @@ import androidx.work.WorkerParameters
 import com.qinglong.panel.database.QingLongDatabase
 import com.qinglong.panel.database.UpdateHistoryEntity
 import com.qinglong.panel.utils.QingLongUpdater
+import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 
 class UpdateCheckerService(
@@ -20,42 +21,21 @@ class UpdateCheckerService(
             val updater = QingLongUpdater(applicationContext)
             val database = QingLongDatabase.getInstance(applicationContext)
 
-            var hasUpdate = false
-
-            Thread {
-                val result = updater.checkForUpdates { updateResult ->
-                    when (updateResult) {
-                        is QingLongUpdater.UpdateResult.Success -> {
-                            if (updateResult.updates.isNotEmpty()) {
-                                hasUpdate = true
-                                updateResult.updates.forEach { update ->
-                                    val updateHistory = UpdateHistoryEntity(
-                                        version = update.latestVersion,
-                                        status = 1,
-                                        description = update.description
-                                    )
-                                    
-                                    Thread {
-                                        database.updateHistoryDao().insertUpdate(updateHistory)
-                                    }.start()
-                                }
-                            }
-                        }
-                        is QingLongUpdater.UpdateResult.Error -> {
-                            Timber.e("Update check failed: ${updateResult.message}")
-                        }
-                    }
+            runBlocking {
+                updater.checkForUpdatesSync().forEach { update ->
+                    val updateHistory = UpdateHistoryEntity(
+                        version = update.latestVersion,
+                        status = 1,
+                        description = update.description
+                    )
+                    database.updateHistoryDao().insertUpdate(updateHistory)
                 }
-            }.join()
-
-            if (hasUpdate) {
-                Result.success()
-            } else {
-                Result.success()
             }
+
+            Result.success()
         } catch (e: Exception) {
             Timber.e(e, "Update check failed")
-            Result.retry()
+            Result.success()
         }
     }
 }
