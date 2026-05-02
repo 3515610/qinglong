@@ -31,50 +31,23 @@ jobs:
       - name: Download Gradle Wrapper
         run: |
           mkdir -p gradle/wrapper
-          curl -L -o gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/v8.2.0/gradle/wrapper/gradle-wrapper.jar
-          curl -L -o gradlew https://github.com/gradle/gradle/raw/v8.2.0/gradlew
+          curl -L -o gradle/wrapper/gradle-wrapper.jar https://services.gradle.org/distributions/gradle-8.2-bin.zip
+          curl -L -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.2-bin.zip
+          unzip -p /tmp/gradle.zip gradle-8.2/lib/gradle-launcher-8.2.jar > /dev/null || true
+          curl -L -o gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.2.0/gradle/wrapper/gradle-wrapper.jar
+          curl -L -o gradlew https://raw.githubusercontent.com/gradle/gradle/v8.2.0/gradlew
           chmod +x gradlew
 
-      - name: Generate Debug Keystore
-        run: |
-          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Build APK
+        run: ./gradlew assembleDebug assembleRelease --no-daemon 2>&1 | tail -100
 
       - name: Find APK files
-        run: |
-          echo "Searching for APK files..."
-          find . -name "*.apk" -type f 2>/dev/null
-          echo "---"
-          ls -la app/build/outputs/apk/debug/ 2>/dev/null || echo "debug apk dir not found"
-          ls -la app/build/outputs/apk/ 2>/dev/null || echo "apk dir not found"
-          ls -la app/build/outputs/ 2>/dev/null || echo "outputs dir not found"
-          ls -la app/build/ 2>/dev/null || echo "build dir not found"
+        run: find . -name "*.apk" -type f
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: |
-            app/build/outputs/apk/debug/*.apk
-            app/build/outputs/apk/*/*.apk
+          path: "**/*.apk"
           if-no-files-found: error
-
-      - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
-
-      - name: Find Release APK
-        run: |
-          echo "Searching for Release APK files..."
-          find . -name "*release*.apk" -type f 2>/dev/null
-          ls -la app/build/outputs/apk/release/ 2>/dev/null || echo "release apk dir not found"
-
-      - name: Upload Release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release
-          path: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/*/*.apk
-          if-no-files-found: error
+          retention-days: 30
