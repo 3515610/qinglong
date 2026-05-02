@@ -38,18 +38,31 @@ jobs:
 
       - name: Build APK
         run: |
-          set +e
-          ./gradlew assembleDebug assembleRelease --no-daemon 2>&1 | tee build.log
-          echo "Build exit code: $?"
-          echo "=== Last 100 lines of build log ==="
-          tail -100 build.log
+          ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace 2>&1 | tee build.log
+          BUILD_EXIT_CODE=${PIPESTATUS[0]}
+          echo "Build exit code: $BUILD_EXIT_CODE"
+          if [ $BUILD_EXIT_CODE -ne 0 ]; then
+            echo "=== Gradle Build Failed ==="
+            echo "=== Full build.log ==="
+            cat build.log
+            exit $BUILD_EXIT_CODE
+          fi
+
+      - name: Upload build log on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 30
 
       - name: Find and copy APK
         run: |
           mkdir -p output
           echo "=== Searching for APK files ==="
           find . -name "*.apk" -type f 2>/dev/null
-          find . -name "*.apk" -type f -exec cp {} output/ \; 2>/dev/null
+          find . -name "*-debug.apk" -type f -exec cp {} output/ \; 2>/dev/null
+          find . -name "*-release-unsigned.apk" -o -name "*-release.apk" | grep -v "unaligned" | xargs -I {} cp {} output/ 2>/dev/null
           echo "=== Output directory ==="
           ls -la output/ 2>/dev/null || echo "output dir is empty"
 
